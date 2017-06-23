@@ -13,30 +13,30 @@ using yarp::os::Value;
 
 
 /* *********************************************************************************************************************** */
-/* ******* Constructor                                                      ********************************************** */   
-ObjectGraspingModule::ObjectGraspingModule() 
+/* ******* Constructor                                                      ********************************************** */
+ObjectGraspingModule::ObjectGraspingModule()
     : RFModule() {
-        closing = false;
+    closing = false;
 
-        dbgTag = "ObjectGraspingModule: ";
+    dbgTag = "ObjectGraspingModule: ";
 }
 /* *********************************************************************************************************************** */
 
 
 /* *********************************************************************************************************************** */
-/* ******* Destructor                                                       ********************************************** */   
+/* ******* Destructor                                                       ********************************************** */
 ObjectGraspingModule::~ObjectGraspingModule() {}
 /* *********************************************************************************************************************** */
 
 
 /* *********************************************************************************************************************** */
-/* ******* Get Period                                                       ********************************************** */   
+/* ******* Get Period                                                       ********************************************** */
 double ObjectGraspingModule::getPeriod() { return period; }
 /* *********************************************************************************************************************** */
 
 
 /* *********************************************************************************************************************** */
-/* ******* Configure module                                                 ********************************************** */   
+/* ******* Configure module                                                 ********************************************** */
 bool ObjectGraspingModule::configure(ResourceFinder &rf) {
     using std::string;
     using yarp::os::Property;
@@ -52,24 +52,31 @@ bool ObjectGraspingModule::configure(ResourceFinder &rf) {
     portOutgoingCommandsRPC.open("/objectGrasping/graspTaskCmd:o");
     attach(portIncomingCommandsRPC);
 
-	rpcCmdUtil.init(&rpcCmdData);
+    rpcCmdUtil.init(&rpcCmdData);
 
-	configData = new ConfigData(rf);
+    configData = new ConfigData(rf);
 
-	// initialize controllers
-	controllersUtil = new ControllersUtil();
-	if (!controllersUtil->init(rf)) {
+    // initialize controllers
+    controllersUtil = new ControllersUtil();
+    if (!controllersUtil->init(rf)) {
         cout << dbgTag << "failed to initialize controllers utility\n";
         return false;
     }
 
-	// save current arm position, to be restored when the thread ends
-	if (!controllersUtil->saveCurrentArmPosition()) {
+    // save current arm position, to be restored when the thread ends
+    if (!controllersUtil->saveCurrentArmPosition()) {
         cout << dbgTag << "failed to store current arm position\n";
         return false;
     }
 
-	taskState = SET_ARM_IN_START_POSITION;
+    taskState = SET_ARM_IN_START_POSITION;
+    stepCounter = 0;
+    maxXStep = 3;
+    maxYStep = 2;
+    maxCounter = maxXStep * maxYStep;
+
+    controllersUtil->saveCurrentStiffness();
+    controllersUtil->setStiffness();
 
     cout << dbgTag << "Started correctly. \n";
 
@@ -79,120 +86,66 @@ bool ObjectGraspingModule::configure(ResourceFinder &rf) {
 
 
 /* *********************************************************************************************************************** */
-/* ******* Update    module                                                 ********************************************** */   
+/* ******* Update    module                                                 ********************************************** */
 bool ObjectGraspingModule::updateModule() {
 
-	std::stringstream cmd;
+    std::stringstream cmd;
 
-	switch(taskState){
+    switch (taskState){
 
-	case SET_ARM_IN_START_POSITION:
-		if (controllersUtil->setArmInStartPosition(configData->cartesianMode,false)) {
-			taskState = WAIT_TO_START;
-		} else{
-	        cout << dbgTag << "failed to set the arm in start position\n";
-	        return false;
-		}
-		break;
+    case SET_ARM_IN_START_POSITION:
+        if (controllersUtil->setArmInStartPosition(configData->cartesianMode)) {
+            taskState = WAIT;
+        }
+        else{
+            cout << dbgTag << "failed to set the arm in start position\n";
+            return false;
+        }
+        break;
 
-	case WAIT_TO_START:
-		// do nothing
-		break;
+    case WAIT:
+        // do nothing
+        break;
 
-	case SET_ARM_IN_GRASP_POSITION:
+    case EXECUTE_EXPLORATION:
 
-//        controllersUtil->testCartesianController();
-//        taskState = WAIT_TO_START;
+        int xStep = stepCounter%maxXStep;
+        int yStep = stepCounter / maxXStep;
+        if (yStep % 2 == 1){
+            xStep = maxXStep - 1 - xStep;
+        }
 
-		if (controllersUtil->setArmInGraspPosition(configData->cartesianMode,false)) {
+        controllersUtil->goToXY(xStep, yStep);
 
-			taskState = BEGIN_GRASP_THREAD;
-		} else{
-	        cout << dbgTag << "failed to set the arm in grasp position\n";
-	        return false;
-		}
-		break;
+        controllersUtil->goDown();
 
-	case BEGIN_GRASP_THREAD:
-        
-		controllersUtil->moveFingers();
-		
-//        sendCommand("set kp_pe",configData->pidKp);
-		
-//        sendCommand("set ki_pe",configData->pidKi);
+        controllersUtil->goToXY(xStep, yStep);
 
-		sendCommand("grasp");
-//		sendCommand("task empty");
-//      sendCommand("task add appr");
-//      sendCommand("task add ctrl",configData->targetPressure);
-//		sendCommand("start");
-		
-		taskState = WAIT_FOR_GRASP_THREAD;
-		break;
-	
-	case WAIT_FOR_GRASP_THREAD:
-		yarp::os::Time::delay(6);
-        taskState = RAISE_ARM;
-		break;
+        // total waiting time = goToXYTrajTime + 1 + goDownTrajTime + waitDown = 7
 
-	case RAISE_ARM:
-		if (controllersUtil->raiseArm(configData->cartesianMode)) {
-			taskState = WAIT_WITH_ARM_RAISED;
-		} else{
-	        cout << dbgTag << "failed to raise the arm\n";
-	        return false;
-		}
-		break;
+        stepCounter++;
 
-	case WAIT_WITH_ARM_RAISED:
-		yarp::os::Time::delay(3);
-		// do nothing
-        taskState = SET_ARM_BACK_IN_GRASP_POSITION;
-		break;
+        if (stepCounter == maxCounter){
 
-	case SET_ARM_BACK_IN_GRASP_POSITION:
-		if (controllersUtil->setArmInGraspPosition(configData->cartesianMode,true)) {
-			taskState = OPEN_HAND;
-		} else{
-	        cout << dbgTag << "failed to set the arm in grasp position\n";
-	        return false;
-		}
-		break;
+            taskState = WAIT;
+            std::cout << "EXPLORATION COMPLETED" << std::endl;
+        }
 
-	case OPEN_HAND:
-		sendCommand("open");
-        yarp::os::Time::delay(1);
-		sendCommand("task empty");
-        taskState = SET_ARM_BACK_IN_START_POSITION;
-	break;
 
-	case SET_ARM_BACK_IN_START_POSITION:
-		if (controllersUtil->setArmInStartPosition(configData->cartesianMode,true)) {
-			taskState = WAIT_FOR_CLOSURE;
-		} else{
-	        cout << dbgTag << "failed to set the arm in start position\n";
-	        return false;
-		}
-		break;
+    default:
+        break;
+    }
 
-	case WAIT_FOR_CLOSURE:
-		// do nothing
-		break;
-
-	default:
-		break;
-	}
-
-    return !closing; 
+    return !closing;
 }
 /* *********************************************************************************************************************** */
 
 
 /* *********************************************************************************************************************** */
-/* ******* Interrupt module                                                 ********************************************** */   
+/* ******* Interrupt module                                                 ********************************************** */
 bool ObjectGraspingModule::interruptModule() {
     cout << dbgTag << "Interrupting. \n";
-    
+
     // Interrupt port
     portIncomingCommandsRPC.interrupt();
     portOutgoingCommandsRPC.interrupt();
@@ -204,59 +157,63 @@ bool ObjectGraspingModule::interruptModule() {
 /* *********************************************************************************************************************** */
 
 /* *********************************************************************************************************************** */
-/* ******* Manage commands coming from RPC Port                             ********************************************** */   
+/* ******* Manage commands coming from RPC Port                             ********************************************** */
 bool ObjectGraspingModule::respond(const yarp::os::Bottle& command, yarp::os::Bottle& reply){
 
-	rpcCmdUtil.processCommand(command);
+    rpcCmdUtil.processCommand(command);
 
-	switch (rpcCmdUtil.mainCmd){
+    switch (rpcCmdUtil.mainCmd){
 
-	case DEMO:
-		demo();
-		break;
-	case HELP:
-		help();
-		break;
-	case SET:
-		set(rpcCmdUtil.setCmdArg,rpcCmdUtil.argValue);
-		break;
-	case TASK:
-		task(rpcCmdUtil.taskCmdArg,rpcCmdUtil.task,rpcCmdUtil.argValue);
-		break;
-	case VIEW:
-		view(rpcCmdUtil.viewCmdArg);
-		break;
-	case START:
-		start();
-		break;
-	case STOP:
-		stop();
-		break;
-	case QUIT:
-		quit();
-		break;
-	}
+    case DEMO:
+        demo();
+        break;
+    case HOME:
+        home();
+        break;
+    case HELP:
+        help();
+        break;
+    case SET:
+        set(rpcCmdUtil.setCmdArg, rpcCmdUtil.argValue);
+        break;
+    case TASK:
+        task(rpcCmdUtil.taskCmdArg, rpcCmdUtil.task, rpcCmdUtil.argValue);
+        break;
+    case VIEW:
+        view(rpcCmdUtil.viewCmdArg);
+        break;
+    case START:
+        start();
+        break;
+    case STOP:
+        stop();
+        break;
+    case QUIT:
+        quit();
+        break;
+    }
 
-	return true;
+    return true;
 }
 
 /* *********************************************************************************************************************** */
-/* ******* Close module                                                     ********************************************** */   
+/* ******* Close module                                                     ********************************************** */
 bool ObjectGraspingModule::close() {
     cout << dbgTag << "Closing. \n";
 
     controllersUtil->restorePreviousArmPosition();
+    controllersUtil->restoreStiffness();
 
-	controllersUtil->release();
+    controllersUtil->release();
 
-	delete(controllersUtil);
+    delete(controllersUtil);
 
     // Close port
     portIncomingCommandsRPC.close();
     portOutgoingCommandsRPC.close();
 
     cout << dbgTag << "Closed. \n";
-    
+
     return true;
 }
 /* *********************************************************************************************************************** */
@@ -265,8 +222,8 @@ bool ObjectGraspingModule::close() {
 /* *********************************************************************************************************************** */
 /* ******* RPC Open hand                                                    ********************************************** */
 bool ObjectGraspingModule::stop() {
-    
-	return true;
+
+    return true;
 }
 /* *********************************************************************************************************************** */
 
@@ -279,15 +236,19 @@ bool ObjectGraspingModule::start() {
 }
 /* *********************************************************************************************************************** */
 
-/* *********************************************************************************************************************** */
-/* ******* RPC Grasp object                                                 ********************************************** */
 bool ObjectGraspingModule::demo() {
 
-    taskState = SET_ARM_IN_GRASP_POSITION; 
-    
+    taskState = EXECUTE_EXPLORATION;
+
     return true;
 }
-/* *********************************************************************************************************************** */
+
+bool ObjectGraspingModule::home() {
+
+    taskState = SET_ARM_IN_START_POSITION;
+
+    return true;
+}
 
 /* *********************************************************************************************************************** */
 /* ******* RPC Quit module                                                  ********************************************** */
@@ -298,42 +259,42 @@ bool ObjectGraspingModule::quit() {
 /* *********************************************************************************************************************** */
 
 
-void ObjectGraspingModule::set(iCub::objectGrasping::RPCSetCmdArgName paramName,Value paramValue){
-//	taskThread->set(paramName,paramValue,rpcCmdData);
-//	view(SETTINGS);
+void ObjectGraspingModule::set(iCub::objectGrasping::RPCSetCmdArgName paramName, Value paramValue){
+    //	taskThread->set(paramName,paramValue,rpcCmdData);
+    //	view(SETTINGS);
 }
 
-void ObjectGraspingModule::task(iCub::objectGrasping::RPCTaskCmdArgName paramName,iCub::objectGrasping::TaskName taskName,Value paramValue){
-//	taskThread->task(paramName,taskName,paramValue,rpcCmdData);
-//	view(TASKS);
+void ObjectGraspingModule::task(iCub::objectGrasping::RPCTaskCmdArgName paramName, iCub::objectGrasping::TaskName taskName, Value paramValue){
+    //	taskThread->task(paramName,taskName,paramValue,rpcCmdData);
+    //	view(TASKS);
 }
 
 void ObjectGraspingModule::view(iCub::objectGrasping::RPCViewCmdArgName paramName){
-//	taskThread->view(paramName,rpcCmdData);
+    //	taskThread->view(paramName,rpcCmdData);
 }
 
 void ObjectGraspingModule::help(){
-//	taskThread->help(rpcCmdData);
+    //	taskThread->help(rpcCmdData);
 }
 
 
 
 void ObjectGraspingModule::sendCommand(std::string command){
-	
-	yarp::os::Bottle message;
 
-	rpcCmdUtil.createBottleMessage(command,message);
+    yarp::os::Bottle message;
 
-	portOutgoingCommandsRPC.write(message);
+    rpcCmdUtil.createBottleMessage(command, message);
+
+    portOutgoingCommandsRPC.write(message);
 
 }
 
-void ObjectGraspingModule::sendCommand(std::string command,double value){
-	
-	yarp::os::Bottle message;
+void ObjectGraspingModule::sendCommand(std::string command, double value){
 
-	rpcCmdUtil.createBottleMessage(command,value,message);
+    yarp::os::Bottle message;
 
-	portOutgoingCommandsRPC.write(message);
+    rpcCmdUtil.createBottleMessage(command, value, message);
+
+    portOutgoingCommandsRPC.write(message);
 
 }

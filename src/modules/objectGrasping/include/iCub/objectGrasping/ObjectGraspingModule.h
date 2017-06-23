@@ -20,57 +20,62 @@ namespace iCub {
 
         class ObjectGraspingModule : public yarp::os::RFModule {
 
-			private:
+        private:
 
-				/* ****** Module attributes                             ****** */
-				double period;
-				std::string moduleName;
-				std::string robotName;
-				bool closing;
-				TaskState taskState;
-                
-				/* ****** RPC Ports                                     ****** */
-				yarp::os::RpcServer portIncomingCommandsRPC;
-				yarp::os::RpcClient portOutgoingCommandsRPC;
+            /* ****** Module attributes                             ****** */
+            double period;
+            std::string moduleName;
+            std::string robotName;
+            bool closing;
+            TaskState taskState;
+            int stepCounter;
+            int maxXStep;
+            int maxYStep;
+            int maxCounter;
 
-				iCub::objectGrasping::RPCCommandsUtil rpcCmdUtil;
-				iCub::objectGrasping::RPCCommandsData rpcCmdData;
+            /* ****** RPC Ports                                     ****** */
+            yarp::os::RpcServer portIncomingCommandsRPC;
+            yarp::os::RpcClient portOutgoingCommandsRPC;
 
-				/* ******* Controllers utility                          ******* */
-                iCub::objectGrasping::ControllersUtil *controllersUtil;
+            iCub::objectGrasping::RPCCommandsUtil rpcCmdUtil;
+            iCub::objectGrasping::RPCCommandsData rpcCmdData;
 
-				/* ******* Ports utility                          ******* */
-//                iCub::objectGrasping::PortsUtil *portsUtil;
+            /* ******* Controllers utility                          ******* */
+            iCub::objectGrasping::ControllersUtil *controllersUtil;
 
-				/* ******* Config Data                            ******* */
-				ConfigData *configData;
+            /* ******* Ports utility                          ******* */
+            //                iCub::objectGrasping::PortsUtil *portsUtil;
 
-				/* ****** Debug attributes                              ****** */
-				std::string dbgTag;
-           
-			public:
-			   
-				ObjectGraspingModule();
-				virtual ~ObjectGraspingModule();
-				virtual double getPeriod();
-				virtual bool configure(yarp::os::ResourceFinder &rf);
-				virtual bool updateModule();
-				virtual bool interruptModule();
-				virtual bool respond(const yarp::os::Bottle& command, yarp::os::Bottle& reply);
-				virtual bool close();
+            /* ******* Config Data                            ******* */
+            ConfigData *configData;
 
-				void sendCommand(std::string command);
-				void sendCommand(std::string command,double value);
+            /* ****** Debug attributes                              ****** */
+            std::string dbgTag;
 
-				/* ****** RPC Methods                                  ****** */
-				bool start();
-				bool demo();
-				bool stop();
-				bool quit();
-				void set(iCub::objectGrasping::RPCSetCmdArgName paramName,yarp::os::Value paramValue);
-				void task(iCub::objectGrasping::RPCTaskCmdArgName paramName,iCub::objectGrasping::TaskName taskName,yarp::os::Value paramValue);
-				void view(iCub::objectGrasping::RPCViewCmdArgName paramName);
-				void help();
+        public:
+
+            ObjectGraspingModule();
+            virtual ~ObjectGraspingModule();
+            virtual double getPeriod();
+            virtual bool configure(yarp::os::ResourceFinder &rf);
+            virtual bool updateModule();
+            virtual bool interruptModule();
+            virtual bool respond(const yarp::os::Bottle& command, yarp::os::Bottle& reply);
+            virtual bool close();
+
+            void sendCommand(std::string command);
+            void sendCommand(std::string command, double value);
+
+            /* ****** RPC Methods                                  ****** */
+            bool start();
+            bool demo();
+            bool home();
+            bool stop();
+            bool quit();
+            void set(iCub::objectGrasping::RPCSetCmdArgName paramName, yarp::os::Value paramValue);
+            void task(iCub::objectGrasping::RPCTaskCmdArgName paramName, iCub::objectGrasping::TaskName taskName, yarp::os::Value paramValue);
+            void view(iCub::objectGrasping::RPCViewCmdArgName paramName);
+            void help();
         };
     }
 }

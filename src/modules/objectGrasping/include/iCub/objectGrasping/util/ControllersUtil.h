@@ -6,6 +6,8 @@
 #include <yarp/dev/PolyDriver.h>
 #include <yarp/dev/IEncoders.h>
 #include <yarp/dev/CartesianControl.h>
+#include <yarp/dev/IInteractionMode.h>
+#include <yarp/dev/IImpedanceControl.h>
 #include <yarp/dev/ControlBoardInterfaces.h>
 #include <yarp/os/ResourceFinder.h>
 #include <yarp/sig/Vector.h>
@@ -17,68 +19,84 @@ namespace iCub {
 
         class ControllersUtil {
 
-            private:
+        private:
 
-                yarp::dev::PolyDriver clientArm;
-                yarp::dev::PolyDriver clientArmCartContr;
-                
-                yarp::dev::IEncoders *iEncs;
-				yarp::dev::IControlMode2 *iCtrl;
-				yarp::dev::IPositionControl *iPos;
-				yarp::dev::IVelocityControl *iVel;
+            yarp::dev::PolyDriver clientArm;
+            yarp::dev::PolyDriver clientArmCartContr;
 
-                yarp::dev::ICartesianControl *iCart;
+            yarp::dev::IEncoders *iEncs;
+            yarp::dev::IControlMode2 *iCtrl;
+            yarp::dev::IPositionControl *iPos;
+            yarp::dev::IVelocityControl *iVel;
+            yarp::dev::IInteractionMode *iInt;
+            yarp::dev::IImpedanceControl *iImp;
 
-				yarp::sig::Vector armStoredPosition;
-				int armJointsNum;
-				std::vector<int> jointsStoredControlMode;
-				std::vector<int> handJointsToMove;
-				std::string whichHand;
+            yarp::dev::ICartesianControl *iCart;
 
+            yarp::sig::Vector armStoredPosition;
+            int armJointsNum;
+            std::vector<int> jointsStoredControlMode;
+            std::vector<int> handJointsToMove;
+            std::string whichHand;
 
-				/* ****** Debug attributes                              ****** */
-                std::string dbgTag;
+            yarp::sig::Vector xInit, oInit;
+            double incrOffset, goToXYTrajTime, goDownOffset, goDownTrajTime, goUpTrajTime, waitDown;
+            std::vector<double> storedJointStiffness,storedJointDumping;
+            double newJointStiffness,newJointDumping;
 
-            public:
+            /* ****** Debug attributes                              ****** */
+            std::string dbgTag;
 
-				ControllersUtil();
+        public:
 
-				bool init(yarp::os::ResourceFinder &rf);
+            ControllersUtil();
 
-				bool saveCurrentArmPosition();
+            bool init(yarp::os::ResourceFinder &rf);
 
-				bool saveCurrentControlMode();
+            bool saveCurrentArmPosition();
 
-				bool testCartesianController();
+            bool saveCurrentControlMode();
 
-				bool setArmInStartPosition(bool cartesianMode,bool back);
+            bool saveCurrentPose();
 
-				bool setArmInGraspPosition(bool cartesianMode,bool back);
+            bool saveCurrentStiffness();
+            bool setStiffness();
+            bool restoreStiffness();
 
-				bool raiseArm(bool cartesianMode);
+            bool testCartesianController();
 
-				bool restorePreviousArmPosition();
+            bool setArmInStartPosition(bool cartesianMode);
 
-				bool restorePreviousControlMode();
+            bool setArmInGraspPosition(bool cartesianMode, bool back);
 
-				bool release();
+            bool raiseArm(bool cartesianMode);
 
-				bool openHand();
+            bool goToXY(int x, int y);
 
-				bool moveFingers();
+            bool goDown();
 
-				bool incrementEndEffectorPosition(double incrX,double incrY,double incrZ,double seconds);
+            bool restorePreviousArmPosition();
 
-                bool setPositionControlModeToArm(bool excludeHand,bool checkCurrent);
+            bool restorePreviousControlMode();
 
-			private:
+            bool release();
 
-				bool waitMoveDone(const double &i_timeout, const double &i_delay);
+            bool openHand();
 
-				bool waitMoveDone(const double &i_timeout, const double &i_delay,bool excludeHand);
+            bool moveFingers();
 
-				bool setControlMode(int joint,int controlMode,bool checkCurrent);
-};
+            bool incrementEndEffectorPosition(double incrX, double incrY, double incrZ, double seconds);
+
+            bool setPositionControlModeToArm(bool excludeHand, bool checkCurrent);
+
+        private:
+
+            bool waitMoveDone(const double &i_timeout, const double &i_delay);
+
+            bool waitMoveDone(const double &i_timeout, const double &i_delay, bool excludeHand);
+
+            bool setControlMode(int joint, int controlMode, bool checkCurrent);
+        };
     } //namespace objectGrasping
 } //namespace iCub
 
