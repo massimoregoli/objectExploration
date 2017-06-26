@@ -648,7 +648,7 @@ bool ControllersUtil::setStiffness(){
 
     for (int i = 0; i < 7; i++){
         iImp->setImpedance(i, newJointStiffness, newJointDumping);
-        //iInt->setInteractionMode(i, VOCAB_IM_COMPLIANT);
+        iInt->setInteractionMode(i, yarp::dev::VOCAB_IM_COMPLIANT);
     }
 
     return true;
@@ -658,7 +658,7 @@ bool ControllersUtil::restoreStiffness(){
 
     for (int i = 0; i < 7; i++){
         iImp->setImpedance(i, storedJointStiffness[i], storedJointDumping[i]);
-        //iInt->setInteractionMode(i, VOCAB_IM_STIFF);
+        iInt->setInteractionMode(i, yarp::dev::VOCAB_IM_STIFF);
     }
     return true;
 }
