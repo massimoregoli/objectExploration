@@ -64,8 +64,8 @@ bool ControllersUtil::init(yarp::os::ResourceFinder &rf){
         cout << dbgTag << "could not open interaction interface\n";
         return false;
     }
-    clientArm.view(iInt);
-    if (!iInt) {
+    clientArm.view(iImp);
+    if (!iImp) {
         cout << dbgTag << "could not open impedence control interface\n";
         return false;
     }
@@ -178,27 +178,29 @@ bool ControllersUtil::setArmInStartPosition(bool cartesianMode){
 
 
         setPositionControlModeToArm(true, true);
+        double joints[16] = {-20.263736, 14.395604, 25.803956 ,79.373626, -11.348649 ,-12.703297 ,-2.241758, 22.515832, 80.994768 ,32.760468 ,42.502724, 42.0, 77.601739, 41.869853 ,85.923438 ,27.160166};
 
+               
         // Arm
-        iPos->positionMove(0, -11);
-        iPos->positionMove(1, 29);
-        iPos->positionMove(2, -22);
-        iPos->positionMove(3, 93);
+        iPos->positionMove(0, joints[0]);
+        iPos->positionMove(1, joints[1]);
+        iPos->positionMove(2, joints[2]);
+        iPos->positionMove(3, joints[3]);
 
-        iPos->positionMove(4, 0);// 0
-        iPos->positionMove(5, -14);// 1
-        iPos->positionMove(6, 9);// 1
-        iPos->positionMove(7, 14);
+        iPos->positionMove(4, joints[4]);// 0
+        iPos->positionMove(5, joints[5]);// 1
+        iPos->positionMove(6, joints[6]);// 1
+        iPos->positionMove(7, joints[7]);
 
         // Hand
-        iPos->positionMove(8, 72);
-        iPos->positionMove(9, 0);
-        iPos->positionMove(10, 0);
-        iPos->positionMove(11, 0);
-        iPos->positionMove(12, 0);
-        iPos->positionMove(13, 0);
-        iPos->positionMove(14, 0);
-        iPos->positionMove(15, 0);
+        iPos->positionMove(8, joints[8]);
+        iPos->positionMove(9, joints[9]);
+        iPos->positionMove(10, joints[10]);
+        iPos->positionMove(11, joints[11]);
+        iPos->positionMove(12, joints[12]);
+        iPos->positionMove(13, joints[13]);
+        iPos->positionMove(14, joints[14]);
+        iPos->positionMove(15, joints[15]);
 
 
     }
@@ -351,6 +353,7 @@ bool ControllersUtil::goToXY(int x, int y){
     iCart->setTrajTime(goToXYTrajTime);
 
     iCart->goToPose(xd, oInit);
+std::cout << "target pose: " << xd[0] << " " << xd[1] << " " << xd[2] << std::endl;
     yarp::os::Time::delay(goToXYTrajTime + 1);
 
     return true;
@@ -375,6 +378,7 @@ bool ControllersUtil::goDown(){
         iCart->setTrajTime(goDownTrajTime);
 
         iCart->goToPose(xd, oInit);
+std::cout << "target pose: " << xd[0] << " " << xd[1] << " " << xd[2] << std::endl;
         yarp::os::Time::delay(goDownTrajTime + waitDown);
 
     }
@@ -644,7 +648,7 @@ bool ControllersUtil::setStiffness(){
 
     for (int i = 0; i < 7; i++){
         iImp->setImpedance(i, newJointStiffness, newJointDumping);
-        iInt->setInteractionMode(i, VOCAB_IM_COMPLIANT);
+        //iInt->setInteractionMode(i, VOCAB_IM_COMPLIANT);
     }
 
     return true;
@@ -654,7 +658,7 @@ bool ControllersUtil::restoreStiffness(){
 
     for (int i = 0; i < 7; i++){
         iImp->setImpedance(i, storedJointStiffness[i], storedJointDumping[i]);
-        iInt->setInteractionMode(i, VOCAB_IM_STIFFNESS);
+        //iInt->setInteractionMode(i, VOCAB_IM_STIFF);
     }
     return true;
 }

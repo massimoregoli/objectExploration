@@ -69,6 +69,7 @@ bool ObjectGraspingModule::configure(ResourceFinder &rf) {
         return false;
     }
 
+
     taskState = SET_ARM_IN_START_POSITION;
     stepCounter = 0;
     maxXStep = 3;
@@ -76,6 +77,7 @@ bool ObjectGraspingModule::configure(ResourceFinder &rf) {
     maxCounter = maxXStep * maxYStep;
 
     controllersUtil->saveCurrentStiffness();
+
     controllersUtil->setStiffness();
 
     cout << dbgTag << "Started correctly. \n";
@@ -109,12 +111,18 @@ bool ObjectGraspingModule::updateModule() {
 
     case EXECUTE_EXPLORATION:
 
+        if (stepCounter == 0){
+            controllersUtil->saveCurrentPose();
+        }
+
         int xStep = stepCounter%maxXStep;
         int yStep = stepCounter / maxXStep;
         if (yStep % 2 == 1){
             xStep = maxXStep - 1 - xStep;
         }
-
+        
+        std::cout << "step " << stepCounter << " - going to (" << yStep << " " << xStep << ")" << std::endl;
+        
         controllersUtil->goToXY(xStep, yStep);
 
         controllersUtil->goDown();
@@ -127,13 +135,14 @@ bool ObjectGraspingModule::updateModule() {
 
         if (stepCounter == maxCounter){
 
-            taskState = WAIT;
             std::cout << "EXPLORATION COMPLETED" << std::endl;
+
+            taskState = WAIT;
+            stepCounter = 0;
         }
 
-
-    default:
         break;
+
     }
 
     return !closing;
