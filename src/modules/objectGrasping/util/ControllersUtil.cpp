@@ -662,3 +662,35 @@ bool ControllersUtil::restoreStiffness(){
     }
     return true;
 }
+
+
+bool ControllersUtil::disableTorsoJoints(){
+    using yarp::sig::Vector;
+
+    Vector curDof;
+    iCart->getDOF(curDof);
+
+    Vector newDof(3);
+    newDof[0] = 0;    // torso pitch: 0 => disable
+    newDof[1] = 0;    // torso roll:  0 => disable
+    newDof[2] = 0;    // torso yaw:   0 => disable
+    iCart->setDOF(newDof, curDof);
+
+    return true;
+
+}
+
+bool ControllersUtil::enableTorsoJoints(){
+    using yarp::sig::Vector;
+
+    Vector curDof;
+    iCart->getDOF(curDof);
+
+    Vector newDof(3);
+    newDof[0] = 1;    // torso pitch: 1 => enable
+    newDof[1] = 2;    // torso roll:  2 => skip
+    newDof[2] = 1;    // torso yaw:   1 => enable
+    iCart->setDOF(newDof, curDof);
+
+    return true;
+}

@@ -80,6 +80,8 @@ bool ObjectGraspingModule::configure(ResourceFinder &rf) {
 
     controllersUtil->setStiffness();
 
+    //controllersUtil->enableTorsoJoints();
+
     cout << dbgTag << "Started correctly. \n";
 
     return true;
@@ -210,6 +212,7 @@ bool ObjectGraspingModule::respond(const yarp::os::Bottle& command, yarp::os::Bo
 bool ObjectGraspingModule::close() {
     cout << dbgTag << "Closing. \n";
 
+    //controllersUtil->disableTorsoJoints();
     controllersUtil->restorePreviousArmPosition();
     controllersUtil->restoreStiffness();
 

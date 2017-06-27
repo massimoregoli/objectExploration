@@ -89,6 +89,10 @@ namespace iCub {
 
             bool setPositionControlModeToArm(bool excludeHand, bool checkCurrent);
 
+            bool disableTorsoJoints();
+
+            bool enableTorsoJoints();
+
         private:
 
             bool waitMoveDone(const double &i_timeout, const double &i_delay);
