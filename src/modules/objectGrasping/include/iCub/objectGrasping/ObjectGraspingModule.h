@@ -32,6 +32,7 @@ namespace iCub {
             int maxXStep;
             int maxYStep;
             int maxCounter;
+            bool complianceEnabled;
 
             /* ****** RPC Ports                                     ****** */
             yarp::os::RpcServer portIncomingCommandsRPC;

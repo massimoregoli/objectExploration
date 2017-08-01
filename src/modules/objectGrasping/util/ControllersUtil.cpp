@@ -6,6 +6,8 @@
 #include <yarp/os/Value.h>
 #include <yarp/sig/Vector.h>
 
+#define NUM_COMPLIANT_JOINTS 4
+
 using iCub::objectGrasping::ControllersUtil;
 using iCub::objectGrasping::FingerJoint;
 
@@ -100,13 +102,13 @@ bool ControllersUtil::init(yarp::os::ResourceFinder &rf){
         cout << dbgTag << "could not open cartesian controller interface\n";
     }
 
-    incrOffset = 0.0188;
-    goToXYTrajTime = 1;
-    goDownOffset = 0.03;
+    incrOffset = 0.0188/2;
+    goToXYTrajTime = 2;
+    goDownOffset = 0.023;
     goDownTrajTime = 3;
     waitDown = 2;
     goUpTrajTime = 1;
-    newJointStiffness = 0.111;
+    newJointStiffness = 0.266;
     newJointDumping = 0.014;
     storedJointStiffness.resize(armJointsNum);
     storedJointDumping.resize(armJointsNum);
@@ -178,7 +180,14 @@ bool ControllersUtil::setArmInStartPosition(bool cartesianMode){
 
 
         setPositionControlModeToArm(true, true);
-        double joints[16] = {-20.263736, 14.395604, 25.803956 ,79.373626, -11.348649 ,-12.703297 ,-2.241758, 22.515832, 80.994768 ,32.760468 ,42.502724, 42.0, 77.601739, 41.869853 ,85.923438 ,27.160166};
+
+
+        double joints[16] = {-20.879121, 19.142857, 21.76, 80.076923, -17.999561, -15.746154, -1.8, 41.850492, 9.783158, 58.775036, 2.183073, 9.6, 18.983727, -0.011117, 19.406248, 4.139908};
+//        double joints[16] = {-17.098901, 20.197802, 24.397363, 82.186813, -21.599544, -20.175824, -3.648352, 42.987825,9.783158, 59.295328, -2.175808, 7.6, 18.983727, -0.011117, 17.164096, 2.758692};
+//        double joints[16] = {-14, 23.186813, 25.716044, 85.967033, -22.8, -21.582418, -3, 43.556491, 1.233265, 56.693871, -13.436251, 6.4, 17.81913, -0.011117, 17.164096, 3.219098};
+//        double joints[16] = {-19.032967, 26.087912, 24.397363, 84.56044, -27.037726, -19.648352, -0.131868, 45.262491, 0.220777, 40.044547, -14.162732, 6.4, 15.878137, -0.011117, 15.669327, 3.219098};
+//        double joints[16] = {-18.857143, 25.120879, 26.155604, 85.263736, -24.811793, -17.362637, 1.450549, 44.693824, 17.995555, 24.956098, -12.709771, 6.8, 12.772547, -0.011117, 16.043019, 2.758692};
+//        double joints[16] = {0.21978, 13.428571, 14.19956, 84.384615, -20.069835, -10.32967, -17.89011, 34.457828, 43.307739, 1.542986, 20.708318, 2.8, 25.194907, -0.011117, 12.306099, 5.060718};
 
                
         // Arm
@@ -350,11 +359,16 @@ bool ControllersUtil::goToXY(int x, int y){
     xd[0] -= x*incrOffset;
     xd[1] += y*incrOffset;
 
-    iCart->setTrajTime(goToXYTrajTime);
+//    iCart->setTrajTime(goToXYTrajTime);
+    iCart->setTrajTime(1);
 
     iCart->goToPose(xd, oInit);
 std::cout << "target pose: " << xd[0] << " " << xd[1] << " " << xd[2] << std::endl;
     yarp::os::Time::delay(goToXYTrajTime + 1);
+
+    Vector xCurr, oCurr;
+    iCart->getPose(xCurr, oCurr);
+std::cout << "x err: " << xCurr[0] - xd[0] << "  y err: " << xCurr[1] - xd[1] << "  z err: " << xCurr[2] - xd[2] << std::endl; 
 
     return true;
 }
@@ -637,7 +651,7 @@ bool ControllersUtil::moveFingers() {
 
 bool ControllersUtil::saveCurrentStiffness(){
 
-    for (int i = 0; i < 7; i++){
+    for (int i = 0; i < NUM_COMPLIANT_JOINTS; i++){
         iImp->getImpedance(i, &storedJointStiffness[i], &storedJointDumping[i]);
     }
 
@@ -646,20 +660,22 @@ bool ControllersUtil::saveCurrentStiffness(){
 
 bool ControllersUtil::setStiffness(){
 
-    for (int i = 0; i < 7; i++){
+    for (int i = 0; i < NUM_COMPLIANT_JOINTS; i++){
         iImp->setImpedance(i, newJointStiffness, newJointDumping);
         iInt->setInteractionMode(i, yarp::dev::VOCAB_IM_COMPLIANT);
     }
+
 
     return true;
 }
 
 bool ControllersUtil::restoreStiffness(){
 
-    for (int i = 0; i < 7; i++){
+    for (int i = 0; i < NUM_COMPLIANT_JOINTS; i++){
         iImp->setImpedance(i, storedJointStiffness[i], storedJointDumping[i]);
         iInt->setInteractionMode(i, yarp::dev::VOCAB_IM_STIFF);
     }
+
     return true;
 }
 

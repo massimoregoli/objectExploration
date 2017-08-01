@@ -70,15 +70,16 @@ bool ObjectGraspingModule::configure(ResourceFinder &rf) {
     }
 
 
+    complianceEnabled = true;
     taskState = SET_ARM_IN_START_POSITION;
     stepCounter = 0;
-    maxXStep = 3;
-    maxYStep = 2;
+    maxXStep = 1;
+    maxYStep = 9;
     maxCounter = maxXStep * maxYStep;
 
-    controllersUtil->saveCurrentStiffness();
+    if (complianceEnabled) controllersUtil->saveCurrentStiffness();
 
-    controllersUtil->setStiffness();
+    if (complianceEnabled) controllersUtil->setStiffness();
 
     //controllersUtil->enableTorsoJoints();
 
@@ -117,12 +118,14 @@ bool ObjectGraspingModule::updateModule() {
             controllersUtil->saveCurrentPose();
         }
 
-        int xStep = stepCounter%maxXStep;
-        int yStep = stepCounter / maxXStep;
-        if (yStep % 2 == 1){
-            xStep = maxXStep - 1 - xStep;
+        int yStep = stepCounter%maxYStep;
+        int xStep = stepCounter / maxYStep;
+        if (xStep % 2 == 1){
+            yStep = maxYStep - 1 - yStep;
         }
-        
+
+
+
         std::cout << "step " << stepCounter << " - going to (" << yStep << " " << xStep << ")" << std::endl;
         
         controllersUtil->goToXY(xStep, yStep);
@@ -213,8 +216,8 @@ bool ObjectGraspingModule::close() {
     cout << dbgTag << "Closing. \n";
 
     //controllersUtil->disableTorsoJoints();
+    if (complianceEnabled) controllersUtil->restoreStiffness();
     controllersUtil->restorePreviousArmPosition();
-    controllersUtil->restoreStiffness();
 
     controllersUtil->release();
 
@@ -250,6 +253,7 @@ bool ObjectGraspingModule::start() {
 
 bool ObjectGraspingModule::demo() {
 
+    yarp::os::Time::delay(3);
     taskState = EXECUTE_EXPLORATION;
 
     return true;
